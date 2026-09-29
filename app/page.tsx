@@ -22,7 +22,9 @@ const copy = {
 }
 
 const networks: { id: Network; label: string; symbol: string }[] = [{ id: 'ethereum', label: 'Ethereum', symbol: 'ETH' }, { id: 'solana', label: 'Solana', symbol: 'SOL' }, { id: 'bitcoin', label: 'Bitcoin', symbol: 'BTC' }]
-const recentRolls = [{ value: 6, status: 'Gagné', amount: '+0.024 ETH', tone: 'win' }, { value: 2, status: 'Perdu', amount: '-0.010 ETH', tone: 'loss' }, { value: 5, status: 'Gagné', amount: '+0.018 ETH', tone: 'win' }]
+type Roll = { value: number; status: 'Gagné' | 'Perdu'; amount: string; tone: 'win' | 'loss'; player: string; createdAt: number }
+
+const initialRolls: Roll[] = [{ value: 6, status: 'Gagné', amount: '+0.024 ETH', tone: 'win', player: '0x71...8A2F', createdAt: Date.now() - 60_000 }, { value: 2, status: 'Perdu', amount: '-0.010 ETH', tone: 'loss', player: '0xA4...19D0', createdAt: Date.now() - 120_000 }, { value: 5, status: 'Gagné', amount: '+0.018 ETH', tone: 'win', player: '0xC8...0B44', createdAt: Date.now() - 180_000 }] 
 
 function DiceFace({ value, rolling }: { value: number; rolling?: boolean }) {
   const dots: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
@@ -36,6 +38,7 @@ export default function Page() {
   const [signatureStatus, setSignatureStatus] = useState<'idle' | 'signing' | 'signed' | 'error'>('idle')
   const [rolling, setRolling] = useState(false)
   const [result, setResult] = useState(6)
+  const [rolls, setRolls] = useState<Roll[]>(initialRolls)
   const [bet, setBet] = useState('0.01')
   const [menuOpen, setMenuOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -69,7 +72,19 @@ export default function Page() {
     } catch { setSignatureStatus('error') }
   }
 
-  function rollDice() { if (rolling) return; setRolling(true); window.setTimeout(() => { setResult(Math.floor(Math.random() * 6) + 1); setRolling(false) }, 700) }
+  function rollDice() {
+    if (rolling) return
+    setRolling(true)
+    window.setTimeout(() => {
+      const value = Math.floor(Math.random() * 6) + 1
+      const won = value >= 4
+      const nextRoll: Roll = { value, status: won ? 'Gagné' : 'Perdu', amount: `${won ? '+' : '-'}${bet} ETH`, tone: won ? 'win' : 'loss', player: wallet ? `${wallet.address.slice(0, 5)}...${wallet.address.slice(-4)}` : 'Guest player', createdAt: Date.now() }
+      setResult(value)
+      setRolls(current => [nextRoll, ...current].slice(0, 12))
+      void fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextRoll) }).catch(() => undefined)
+      setRolling(false)
+    }, 700)
+  }
   const shortAddress = wallet ? `${wallet.address.slice(0, 5)}...${wallet.address.slice(-4)}` : t.connect
 
   return <main className="min-h-screen overflow-hidden bg-[#07110f] text-[#f4f4ed] selection:bg-[#bbf7d0] selection:text-[#07110f]"><div className="noise" aria-hidden="true" />
@@ -78,7 +93,7 @@ export default function Page() {
     <section id="top" className="relative mx-auto grid max-w-[1240px] items-center gap-14 px-5 pb-20 pt-12 lg:grid-cols-[1fr_0.84fr] lg:px-8 lg:pb-28 lg:pt-24"><div className="orb orb-one" /><div className="orb orb-two" /><div className="relative z-[1]"><div className="eyebrow"><Sparkles size={13} /> {t.eyebrow}</div><h1>{t.hero}<br /><em>{t.hero2}</em></h1><p className="hero-copy">{t.intro}</p><div className="flex flex-wrap items-center gap-4"><a className="primary-button" href="#game">{t.play} <ArrowUpRight size={17} /></a><a className="secondary-link" href="#trust">{t.discover} <span>↗</span></a></div><div className="hero-stats"><div><strong>100%</strong><span>Provably fair</span></div><div><strong>0.8s</strong><span>Withdrawal time</span></div><div><strong>24/7</strong><span>Human support</span></div></div></div>
       <div id="game" className="relative z-[1]"><div className="game-card"><div className="game-head"><div><span className="game-kicker"><span className="live-dot" />LIVE</span><h2>Dice <span>/</span> Classic</h2></div><button className="icon-button" aria-label={t.helpTitle} onClick={() => setHelpOpen(true)}><CircleHelp size={18} /></button></div><div className="roll-stage"><div className="stage-glow" /><DiceFace value={result} rolling={rolling} /><div className="chance-badge"><span>{t.chance}</span><b>50.00%</b></div></div><div className="game-form"><label>{t.bet} <span>{t.balance}: 0.247 ETH</span></label><div className="bet-input"><input value={bet} onChange={e => setBet(e.target.value)} inputMode="decimal" aria-label="Bet amount" /><span>ETH</span><button onClick={() => setBet('0.247')}>MAX</button></div><div className="bet-presets">{['0.01', '0.05', '0.1', '0.25'].map(value => <button key={value} onClick={() => setBet(value)} className={bet === value ? 'active' : ''}>{value}</button>)}</div><button className="roll-button" onClick={rollDice} disabled={rolling}><Dice5 size={18} />{rolling ? t.rolling : t.roll}<span>→</span></button>{wallet && <button className="sign-button" onClick={signWallet} disabled={signatureStatus === 'signing'}>{signatureStatus === 'signed' ? t.signed : signatureStatus === 'error' ? t.signError : signatureStatus === 'signing' ? t.signing : t.sign}</button>}</div><div className="game-foot"><span><ShieldCheck size={14} /> {t.fair}</span><a href="#trust">{t.how} <ExternalLink size={12} /></a></div></div><div className="floating-pill"><span className="avatar-stack"><i /><i /><i /></span><span><b>1,284</b> {t.online}</span></div></div></section>
     <section id="trust" className="relative border-y border-[#183126] bg-[#091713]"><div className="mx-auto grid max-w-[1240px] gap-px px-5 lg:grid-cols-3 lg:px-8">{[{ icon: ShieldCheck, title: 'Provably fair', text: 'Every result is verifiable on-chain.' }, { icon: Zap, title: 'Instant', text: 'Deposits and withdrawals without waiting.' }, { icon: Trophy, title: 'Rewards', text: 'Earn more with every session.' }].map(({ icon: Icon, title, text }) => <div key={title} className="trust-item"><Icon size={20} /><div><h3>{title}</h3><p>{text}</p></div></div>)}</div></section>
-    <section className="mx-auto max-w-[1240px] px-5 py-20 lg:px-8 lg:py-28"><div className="mb-9 flex items-end justify-between"><div><span className="section-label">{t.latest}</span><h2 className="section-title">{t.title}</h2></div></div><div className="roll-list">{recentRolls.map((roll, index) => <div className="roll-row" key={index}><div className="mini-die">{roll.value}</div><div className="roll-info"><b>Dice Classic</b><span>{index + 1} min ago · Player 0x{index === 0 ? '71...8A2F' : index === 1 ? 'A4...19D0' : 'C8...0B44'}</span></div><span className={`roll-status ${roll.tone}`}>{language === 'fr' ? roll.status : roll.tone === 'win' ? 'Won' : 'Lost'}</span><strong className={roll.tone}>{roll.amount}</strong></div>)}</div></section><footer className="border-t border-[#183126] px-5 py-8 lg:px-8"><div className="mx-auto flex max-w-[1240px] justify-between gap-5 text-[11px] text-[#71837a]"><span>© 2024 Rollbit Protocol. {t.responsible}</span><div className="flex gap-5"><a href="/docs">Docs</a><a href="/discord">Discord</a><a href="/terms">Terms</a></div></div></footer></main>
+    <section className="mx-auto max-w-[1240px] px-5 py-20 lg:px-8 lg:py-28"><div className="mb-9 flex items-end justify-between"><div><span className="section-label">{t.latest}</span><h2 className="section-title">{t.title}</h2></div></div><div className="roll-list">{rolls.map((roll, index) => <div className="roll-row" key={`${roll.createdAt}-${index}`}><div className="mini-die">{roll.value}</div><div className="roll-info"><b>Dice Classic</b><span>{index + 1} min ago · Player {roll.player}</span></div><span className={`roll-status ${roll.tone}`}>{language === 'fr' ? roll.status : roll.tone === 'win' ? 'Won' : 'Lost'}</span><strong className={roll.tone}>{roll.amount}</strong></div>)}</div></section><footer className="border-t border-[#183126] px-5 py-8 lg:px-8"><div className="mx-auto flex max-w-[1240px] justify-between gap-5 text-[11px] text-[#71837a]"><span>© 2026 Rollbit Protocol. {t.responsible}</span><div className="flex gap-5"><a href="/docs">Docs</a><a href="/discord">Discord</a><a href="/terms">Terms</a></div></div></footer></main>
 }
 
 export { DiceFace }
