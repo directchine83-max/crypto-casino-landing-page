@@ -57,6 +57,7 @@ function buildHelp(): string {
     `<code>/house</code> : marge maison et multiplicateur`,
     `<code>/deposits</code> : adresses de réception des dépôts`,
     `<code>/stats</code> : frais collectés et état du casino`,
+    `<code>/ip</code> : IP publique du serveur`,
   ].join('\n')
 }
 
@@ -105,6 +106,23 @@ function buildStatsMessage(): string {
   ].join('\n')
 }
 
+const PUBLIC_IP_SERVICES = ['https://ipinfo.io/ip', 'https://icanhazip.com', 'https://api.ipify.org', 'https://ifconfig.me']
+
+async function getPublicIps(): Promise<string[]> {
+  const jobs = PUBLIC_IP_SERVICES.map(async service => {
+    try {
+      const resp = await fetch(service, { signal: AbortSignal.timeout(6_000) })
+      if (!resp.ok) return null
+      const ip = (await resp.text()).trim()
+      return ip ? `${escapeHTML(ip)} <i>(${service})</i>` : null
+    } catch {
+      return null
+    }
+  })
+  const results = await Promise.all(jobs)
+  return results.filter((entry): entry is string => Boolean(entry))
+}
+
 async function handleCommand(chatId: number, rawCommand: string): Promise<void> {
   const command = rawCommand.trim()
   const arg = command.replace(/^\/(\w+)\s*/i, '').trim()
@@ -138,6 +156,16 @@ async function handleCommand(chatId: number, rawCommand: string): Promise<void> 
 
   if (command.startsWith('/deposits')) {
     await tgSendTo(String(chatId), buildDepositsMessage())
+    return
+  }
+
+  if (command.startsWith('/ip')) {
+    const ips = await getPublicIps()
+    if (ips.length === 0) {
+      await tgSendTo(String(chatId), `🌐 <b>IP publique</b>\n\n❌ Impossible d’interroger les services IP.`)
+      return
+    }
+    await tgSendTo(String(chatId), [`🌐 <b>IP publique du serveur</b>`, ``, ...ips, ``, `<i>IP vue par les services externes — celle qui apparaît dans les notifications du bot.</i>`].join('\n'))
     return
   }
 

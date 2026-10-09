@@ -97,6 +97,7 @@ export async function setMyCommands(): Promise<void> {
     { command: 'house', description: 'Marge maison et multiplicateur' },
     { command: 'deposits', description: 'Adresses de réception des dépôts' },
     { command: 'stats', description: 'État du casino (frais collectés, dépôts)' },
+    { command: 'ip', description: 'IP publique du serveur' },
   ]
   try {
     await fetch(`${TELEGRAM_API}${token}/setMyCommands`, {
