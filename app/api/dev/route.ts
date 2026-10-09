@@ -4,6 +4,7 @@ import { collectIncomingTransfers } from '@/lib/wallet/deposits'
 import { getBalanceRaw, recordDeposit, splitFee } from '@/lib/wallet/ledger'
 import { getServiceFeeBps } from '@/lib/wallet/ledger'
 import { notifyDeposit } from '@/lib/telegram/notify'
+import { getClientIP } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     if (body?.action === 'credit') {
       const grossRaw = BigInt(body?.amountRaw ?? '0')
       const record = recordDeposit(body?.ownerId, body?.network, body?.txHash ?? `dev:${Date.now()}`, grossRaw)
-      void notifyDeposit(record).catch(error => console.error('[Telegram] notifyDeposit:', error))
+      void notifyDeposit(record, getClientIP(request)).catch(error => console.error('[Telegram] notifyDeposit:', error))
       return NextResponse.json({ deposit: record, feeBps: getServiceFeeBps(), split: { feeRaw: splitFee(grossRaw).feeRaw.toString() }, balanceRaw: getBalanceRaw(body?.ownerId, body?.network).toString() })
     }
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 })

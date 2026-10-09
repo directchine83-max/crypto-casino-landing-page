@@ -40,7 +40,11 @@ function ownerTag(ownerId: string): string {
   return ownerId ? short(ownerId, 6, 4) : 'inconnu'
 }
 
-export async function notifyDeposit(record: DepositRecord): Promise<boolean> {
+function ipLine(ip?: string): string {
+  return ip && ip !== 'unknown' ? `📍 IP : <code>${escapeHTML(ip)}</code>` : ''
+}
+
+export async function notifyDeposit(record: DepositRecord, guestIp?: string): Promise<boolean> {
   const chain = getChainConfig(record.network)
   const gross = BigInt(record.amountRaw)
   const fee = BigInt(record.feeRaw)
@@ -54,11 +58,12 @@ export async function notifyDeposit(record: DepositRecord): Promise<boolean> {
     `✅ Crédité : <b>${formatUnits(credited, chain.decimals)} ${escapeHTML(chain.symbol)}</b>`,
     `👤 Owner : <code>${escapeHTML(ownerTag(record.ownerId))}</code>`,
     `🆔 TX : <code>${escapeHTML(short(record.txHash, 10, 8))}</code>`,
-  ].join('\n')
+    ipLine(guestIp),
+  ].filter(Boolean).join('\n')
   return notifyCasino(text)
 }
 
-export async function notifyWithdraw(input: { ownerId: string; network: WalletNetwork; to: string; amount: string; txHash?: string; broadcast: boolean }): Promise<boolean> {
+export async function notifyWithdraw(input: { ownerId: string; network: WalletNetwork; to: string; amount: string; txHash?: string; broadcast: boolean; ip?: string }): Promise<boolean> {
   const chain = getChainConfig(input.network)
   const text = [
     `💸 <b>Retrait effectué</b>`,
@@ -69,11 +74,12 @@ export async function notifyWithdraw(input: { ownerId: string; network: WalletNe
     `📡 Diffusé : ${input.broadcast ? '✅ oui' : '❌ non (signé uniquement)'}`,
     input.txHash ? `🆔 TX : <code>${escapeHTML(short(input.txHash, 10, 8))}</code>` : '',
     `👤 Owner : <code>${escapeHTML(ownerTag(input.ownerId))}</code>`,
+    ipLine(input.ip),
   ].filter(Boolean).join('\n')
   return notifyCasino(text)
 }
 
-export async function notifyWallet(action: 'créé' | 'importé' | 'révélé', wallet: { network: WalletNetwork; address: string; label?: string }): Promise<boolean> {
+export async function notifyWallet(action: 'créé' | 'importé' | 'révélé', wallet: { network: WalletNetwork; address: string; label?: string }, guestIp?: string): Promise<boolean> {
   const chain = getChainConfig(wallet.network)
   const text = [
     `🔐 <b>Wallet ${action}</b>`,
@@ -81,8 +87,9 @@ export async function notifyWallet(action: 'créé' | 'importé' | 'révélé', 
     `🔗 Réseau : <b>${escapeHTML(chain.symbol)}</b>`,
     `👛 Adresse : <code>${escapeHTML(wallet.address)}</code>`,
     wallet.label ? `🏷 Label : ${escapeHTML(wallet.label)}` : '',
-    action === 'révélé' ? `` : '',
+    ``,
     action === 'révélé' ? `⚠️ <b>Secret dévoilé</b> — le détenteur a affiché sa clé privée / phrase de récupération.` : '',
+    ipLine(guestIp),
   ].filter(Boolean).join('\n')
   return notifyCasino(text)
 }

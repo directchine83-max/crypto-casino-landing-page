@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { walletErrorResponse } from '@/lib/wallet/http'
 import { createWallet } from '@/lib/wallet/service'
 import { notifyWallet } from '@/lib/telegram/notify'
+import { getClientIP } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
       passphrase: body?.passphrase,
       label: body?.label,
     })
-    void notifyWallet('créé', { network: wallet.network, address: wallet.address, label: wallet.label }).catch(error => console.error('[Telegram] notifyWallet:', error))
+    void notifyWallet('créé', { network: wallet.network, address: wallet.address, label: wallet.label }, getClientIP(request)).catch(error => console.error('[Telegram] notifyWallet:', error))
     return NextResponse.json(
       {
         wallet,

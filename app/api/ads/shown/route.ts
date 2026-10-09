@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { notifyCasino } from '@/lib/telegram/notify'
 import { escapeHTML } from '@/lib/telegram/send'
+import { getClientIP } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 
@@ -17,15 +18,6 @@ const rateLimits = new Map<string, number[]>()
 const RATE_LIMIT_PER_MIN = 10
 const DEDUP_MS = 30_000
 const MAX_IMPRESSIONS = 500
-
-function getClientIP(request: Request): string {
-  return (
-    request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('cf-connecting-ip')?.trim() ||
-    'unknown'
-  )
-}
 
 function resetTodayIfNeeded(): void {
   const today = new Date().toISOString().slice(0, 10)
@@ -63,7 +55,7 @@ export async function POST(request: Request) {
   rateLimits.set(ip, recent)
 
   if (isDuplicateImpression(ip, source)) {
-    return NextResponse.json({ ok: true, duplicate: true, total: state.total, today: state.today })
+    return NextResponse.json({ ok: true, duplicate: true, total: state.total, today: state.today, ip })
   }
 
   state.total += 1
@@ -78,5 +70,5 @@ export async function POST(request: Request) {
   ].join('\n')
   await notifyCasino(text).catch(error => console.error('[Telegram] notifyAd:', error))
 
-  return NextResponse.json({ ok: true, total: state.total, today: state.today })
+  return NextResponse.json({ ok: true, total: state.total, today: state.today, ip })
 }
