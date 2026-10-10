@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getHouseConfig } from '@/lib/house'
-import { CHAIN_NETWORKS, getChainConfig } from '@/lib/wallet/chain-config'
-import { countDeposits, getFeesCollected } from '@/lib/wallet/ledger'
-import { getTreasuryAddresses } from '@/lib/wallet/treasury'
+import { getSolanaConfig } from '@/lib/solana/config'
 import { escapeHTML, getBotToken, isAuthorizedChat, setMyCommands, tgSendTo } from '@/lib/telegram/send'
 
 export const runtime = 'nodejs'
@@ -47,7 +45,7 @@ export async function registerTelegramWebhook(): Promise<boolean> {
 
 function buildHelp(): string {
   return [
-    `🎰 <b>Rollbit Casino Bot</b>`,
+    `🎰 <b>Live Roll Casino Bot</b>`,
     ``,
     `📋 Commandes disponibles :`,
     `<code>/start</code> : message d’accueil`,
@@ -55,9 +53,11 @@ function buildHelp(): string {
     `<code>/chatid</code> : identifiant de ce chat`,
     `<code>/ping</code> : vérifier que le casino répond`,
     `<code>/house</code> : marge maison et multiplicateur`,
-    `<code>/deposits</code> : adresses de réception des dépôts`,
-    `<code>/stats</code> : frais collectés et état du casino`,
+    `<code>/treasury</code> : adresse Solana de réception`,
+    `<code>/stats</code> : état du casino (réseau, trésorerie)`,
     `<code>/ip</code> : IP publique du serveur`,
+    ``,
+    `<i>Les mises sont signées côté joueur (Phantom). La maison ne détient jamais les clés.</i>`,
   ].join('\n')
 }
 
@@ -71,38 +71,29 @@ function buildHouseMessage(): string {
   ].join('\n')
 }
 
-function buildDepositsMessage(): string {
-  const entries = getTreasuryAddresses()
-  const lines = entries.map(entry => {
-    const label = entry.configured
-      ? `<code>${escapeHTML(entry.address)}</code> · <a href="${entry.explorerUrl}">explorer</a>`
-      : `<i>non configuré</i>`
-    return `• <b>${escapeHTML(entry.symbol)}</b> — ${label}`
-  })
+function buildTreasuryMessage(): string {
+  const config = getSolanaConfig()
+  const address = config.configured
+    ? `<code>${escapeHTML(config.treasuryAddress)}</code>\n<a href="${config.explorerAddressUrl}${config.treasuryAddress}${config.explorerQuery}">Voir sur Solscan</a>`
+    : `<i>non configurée (SOLANA_TREASURY_ADDRESS)</i>`
   return [
-    `📥 <b>Adresses de dépôt</b>`,
+    `📥 <b>Trésorerie Solana</b>`,
     ``,
-    ...lines,
-    ``,
-    `<i>Envoyez vos fonds sur ces adresses publiques ; votre solde est crédité après confirmation.</i>`,
+    `🌐 Réseau : <b>${escapeHTML(config.cluster)}</b>`,
+    `👛 Adresse : ${address}`,
   ].join('\n')
 }
 
 function buildStatsMessage(): string {
-  const config = getHouseConfig()
-  const fees = CHAIN_NETWORKS.map(network => {
-    const chain = getChainConfig(network)
-    const fee = getFeesCollected(network)
-    const feeText = (Number(fee) / 10 ** chain.decimals).toLocaleString('fr-FR', { maximumFractionDigits: chain.decimals })
-    return `• <b>${escapeHTML(chain.symbol)}</b> : <b>${feeText}</b>${chain.configured ? '' : ' <i>(trésorerie non configurée)</i>'}`
-  })
+  const house = getHouseConfig()
+  const solana = getSolanaConfig()
   return [
     `📊 <b>État du casino</b>`,
     ``,
-    `🪙 Dépôts enregistrés : <b>${countDeposits()}</b>`,
-    `📐 Marge maison : <b>${config.houseEdgeBps} bps</b> (${(config.houseEdgeBps / 100).toFixed(2)} %)`,
-    `🧾 Frais collectés :`,
-    ...fees,
+    `🌐 Réseau : <b>Solana · ${escapeHTML(solana.cluster)}</b>`,
+    `📐 Marge maison : <b>${house.houseEdgeBps} bps</b> (${(house.houseEdgeBps / 100).toFixed(2)} %)`,
+    `🧾 Trésorerie : ${solana.configured ? `<code>${escapeHTML(solana.treasuryAddress)}</code>` : '<i>non configurée</i>'}`,
+    `📡 Diffusion on-chain : <b>${solana.sendEnabled ? 'activée' : 'désactivée'}</b>`,
   ].join('\n')
 }
 
@@ -125,7 +116,6 @@ async function getPublicIps(): Promise<string[]> {
 
 async function handleCommand(chatId: number, rawCommand: string): Promise<void> {
   const command = rawCommand.trim()
-  const arg = command.replace(/^\/(\w+)\s*/i, '').trim()
 
   if (command.startsWith('/chatid')) {
     await tgSendTo(String(chatId), `📡 Chat ID : <code>${escapeHTML(String(chatId))}</code>`)
@@ -154,8 +144,8 @@ async function handleCommand(chatId: number, rawCommand: string): Promise<void> 
     return
   }
 
-  if (command.startsWith('/deposits')) {
-    await tgSendTo(String(chatId), buildDepositsMessage())
+  if (command.startsWith('/treasury') || command.startsWith('/deposits')) {
+    await tgSendTo(String(chatId), buildTreasuryMessage())
     return
   }
 
@@ -179,7 +169,6 @@ async function handleCommand(chatId: number, rawCommand: string): Promise<void> 
     return
   }
 
-  void arg
   await tgSendTo(String(chatId), `❌ Commande inconnue. Tape /help pour la liste des commandes.`)
 }
 

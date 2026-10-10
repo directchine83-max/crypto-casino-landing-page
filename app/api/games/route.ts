@@ -14,10 +14,10 @@ const globalForGames = globalThis as unknown as { __rollbitGames?: Game[] }
 function seedGames(): Game[] {
   const now = Date.now()
   return [
-    { value: 6, status: 'Gagné', amount: '+0.024 ETH', tone: 'win', player: '0x71...8A2F', createdAt: now - 62_000 },
-    { value: 2, status: 'Perdu', amount: '-0.010 ETH', tone: 'loss', player: '0xA4...19D0', createdAt: now - 128_000 },
-    { value: 5, status: 'Gagné', amount: '+0.018 ETH', tone: 'win', player: '0xC8...0B44', createdAt: now - 191_000 },
-    { value: 3, status: 'Perdu', amount: '-0.005 ETH', tone: 'loss', player: '0xF2...7C19', createdAt: now - 254_000 },
+    { value: 6, status: 'Gagné', amount: '+0.058 SOL', tone: 'win', player: '7xKXt…gAsU', createdAt: now - 62_000 },
+    { value: 2, status: 'Perdu', amount: '-0.010 SOL', tone: 'loss', player: '4zMMC…9vWq', createdAt: now - 128_000 },
+    { value: 5, status: 'Gagné', amount: '+0.020 SOL', tone: 'win', player: 'CzD91…sAsU', createdAt: now - 191_000 },
+    { value: 3, status: 'Perdu', amount: '-0.005 SOL', tone: 'loss', player: 'F2V04…c7H9', createdAt: now - 254_000 },
   ]
 }
 

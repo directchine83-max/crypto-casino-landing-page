@@ -95,8 +95,8 @@ export async function setMyCommands(): Promise<void> {
     { command: 'chatid', description: 'Identifiant de ce chat' },
     { command: 'ping', description: 'Vérifier que le casino répond' },
     { command: 'house', description: 'Marge maison et multiplicateur' },
-    { command: 'deposits', description: 'Adresses de réception des dépôts' },
-    { command: 'stats', description: 'État du casino (frais collectés, dépôts)' },
+    { command: 'treasury', description: 'Adresse Solana de réception' },
+    { command: 'stats', description: 'État du casino (réseau, trésorerie)' },
     { command: 'ip', description: 'IP publique du serveur' },
   ]
   try {

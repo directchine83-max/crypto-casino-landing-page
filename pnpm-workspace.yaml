@@ -1,5 +1,7 @@
-pmOnFail: ignore
-
 minimumReleaseAgeExclude:
   - '@next/*'
   - next
+
+allowBuilds:
+  bufferutil: true
+  utf-8-validate: true
