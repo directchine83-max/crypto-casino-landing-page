@@ -5,5 +5,5 @@ export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
   const ip = getClientIP(request)
-  return NextResponse.json({ ip, service: 'rollbit visitor ip check' })
+  return NextResponse.json({ ip, service: 'live roll visitor ip check' })
 }

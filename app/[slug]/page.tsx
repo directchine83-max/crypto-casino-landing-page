@@ -7,12 +7,12 @@ const pages = {
     title: 'Simple games. Transparent odds.',
     text: 'Roll, verify, and play from one non-custodial interface. Every game is designed around clear rules and verifiable outcomes.',
     icon: Dice5,
-    points: ['Dice Classic with instant results', 'Transparent odds before every roll', 'Play with ETH, SOL, or BTC wallets'],
+    points: ['Dice Classic with instant results', 'Transparent odds before every roll', 'Play with your Phantom wallet'],
   },
   'provably-fair': {
     eyebrow: 'Provably Fair',
     title: 'Trust every roll.',
-    text: 'Rollbit combines a committed server seed, your client seed, and a nonce to generate outcomes you can independently verify.',
+    text: 'Live Roll combines a committed server seed, your client seed, and a nonce to generate outcomes you can independently verify.',
     icon: ShieldCheck,
     points: ['Server seeds are committed before play', 'Client seeds keep randomness in your hands', 'Results can be checked after every session'],
   },
@@ -21,7 +21,7 @@ const pages = {
     title: 'More play. More perks.',
     text: 'Your activity unlocks rewards without giving up custody of your assets. Keep your wallet connected and track your progress in one place.',
     icon: Trophy,
-    points: ['Session-based rewards', 'Transparent reward criteria', 'Multi-network wallet support'],
+    points: ['Session-based rewards', 'Transparent reward criteria', 'Non-custodial Solana wallet support'],
   },
   docs: {
     eyebrow: 'Documentation',
@@ -33,14 +33,14 @@ const pages = {
   discord: {
     eyebrow: 'Community',
     title: 'Join the conversation.',
-    text: 'Meet other players, follow product updates, and get help from the Rollbit community.',
+    text: 'Meet other players, follow product updates, and get help from the Live Roll community.',
     icon: Wallet,
     points: ['Product announcements', 'Community support', 'Responsible play resources'],
   },
   terms: {
     eyebrow: 'Terms',
     title: 'Play with clarity.',
-    text: 'Please review the terms, eligibility requirements, and responsible gaming guidance before using Rollbit.',
+    text: 'Please review the terms, eligibility requirements, and responsible gaming guidance before using Live Roll.',
     icon: CheckCircle2,
     points: ['18+ only where legally permitted', 'Never wager more than you can afford to lose', 'Self-custody means you control your funds'],
   },
@@ -55,7 +55,7 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
     <main className="min-h-screen bg-[#07110f] px-5 py-6 text-[#f4f4ed] lg:px-8">
       <div className="mx-auto flex max-w-[1080px] flex-col gap-16">
         <header className="flex items-center justify-between">
-          <Link className="flex items-center gap-2.5" href="/"><span className="brand-mark"><Dice5 size={20} /></span><span className="font-mono text-[15px] font-bold tracking-[0.2em] text-white">ROLL<span className="text-[#b7f34a]">BIT</span></span></Link>
+          <Link className="flex items-center gap-2.5" href="/"><span className="brand-mark"><Dice5 size={20} /></span><span className="font-mono text-[15px] font-bold tracking-[0.2em] text-white">LIVE<span className="text-[#b7f34a]">ROLL</span></span></Link>
           <Link className="secondary-link" href="/"><ArrowLeft size={15} /> Back home</Link>
         </header>
         <section className="max-w-3xl pb-12 pt-12">
@@ -75,4 +75,4 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
 export function generateStaticParams() { return Object.keys(pages).map((slug) => ({ slug })) }
 
 export const dynamicParams = false
-export const metadata = { title: 'Rollbit — Explore' }
+export const metadata = { title: 'Live Roll — Explore' }

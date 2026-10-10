@@ -32,61 +32,48 @@ To learn more, take a look at the following resources:
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 - [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
 
-## Wallet chiffré (création / import)
+## Wallet Solana non-custodial (signature côté joueur)
 
-Le dapp génère de vrais wallets multi-chaînes (Ethereum, Solana, Bitcoin) et les
-stocke **chiffrés au repos** (AES-256-GCM). Inspiré de la gestion de secrets du
-bot `tg-crypto-wallet`.
+La dapp ne crée **aucun wallet** et ne stocke **aucune clé privée**. Le joueur
+connecte son propre wallet navigateur (**Phantom**) ; la maison ne détient jamais
+les clés. Inspiré de la gestion de wallet Solana (wallet adapter / `@solana/web3.js`).
 
-- Génération/import : `POST /api/wallets/create`, `POST /api/wallets/import`
-- Révélation (propriétaire + phrase secrète) : `POST /api/wallets/reveal`
-- Liste sans secret : `GET /api/wallets/list?ownerId=…`
+Fonctions exposées :
 
-Modèle de sécurité :
+- `GET /api/solana/balance?address=…` → solde on-chain (lamports + SOL) via RPC.
+- `GET /api/solana/fees?address=…&amount=…` → estimation des frais réseau
+  **à l'avance** (`getFeeForMessage` + frais de priorité optionnels).
+- `POST /api/solana/transaction` → construit une transaction de transfert SOL
+  **non signée** (base64) vers la trésorerie.
+- `POST /api/solana/send` → relaie une transaction **déjà signée par le joueur**
+  vers le réseau Solana.
+- `POST /api/solana/verify` → vérifie une signature Ed25519 (preuve de
+  propriété du wallet).
+- `GET /api/solana/info` → configuration (cluster, trésorerie, activation).
 
-- Clé maître `MASTER_ENCRYPTION_KEY` (32 octets hex) → clé dérivée **par
-  propriétaire** via HKDF-SHA256, puis chiffrement AES-256-GCM (IV 12 octets,
-  tag 16 octets, préfixe de version).
-- Phrase secrète optionnelle : si elle est définie, elle est requise pour
-  révéler le wallet (PBKDF2-SHA512, 210 000 itérations + HKDF).
-- Les mnémoniques/clés privées ne sont **jamais** renvoyés en clair par la liste,
-  jamais journalisés, et le magasin disque (`WALLET_STORE_PATH/wallets.json`,
-  mode `0600`) ne contient que le ciphertext.
-- Le `ownerId` (aléatoire, conservé côté navigateur) joue le rôle d'identifiant
-  de propriétaire — comme le `chatId` du bot.
+Flux de mise :
 
-Génération de la clé maître :
+1. Le serveur construit la transaction (montant + frais estimés).
+2. Le joueur signe avec **Phantom** (côté navigateur uniquement).
+3. Le navigateur renvoie la transaction signée à `/api/solana/send`.
+4. Le serveur diffuse la transaction et confirme ; le résultat provably fair est
+   résolu, puis le solde on-chain est rafraîchi.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+Variables d'environnement :
 
-Copiez `.env.example` vers `.env.local` puis renseignez les variables :
+| Variable                              | Défaut                             | Rôle                                              |
+| ------------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| `SOLANA_RPC_URL`                      | `https://api.mainnet-beta.solana.com` | Endpoint RPC (solde, frais, diffusion).        |
+| `SOLANA_NETWORK`                      | déduit de l'URL                    | `mainnet-beta` / `devnet` / `testnet` / `localnet`. |
+| `SOLANA_TREASURY_ADDRESS`             | —                                  | Clé **publique** de réception des mises. Requis.  |
+| `SOLANA_PRIORITY_FEE_MICROLAMPORTS`   | `0`                                | Frais de priorité (0 = aucun).                    |
+| `SOLANA_SEND_ENABLED`                 | `true`                             | `false` = lecture seule (pas de diffusion).       |
+| `SOLANA_RPC_TIMEOUT_MS`               | `20000`                            | Délai RPC.                                        |
+| `HOUSE_EDGE_BPS`                      | `200`                              | Marge maison en points de base (max 2000).        |
 
-| Variable                       | Défaut              | Rôle                                                    |
-| ------------------------------ | ------------------- | ------------------------------------------------------- |
-| `MASTER_ENCRYPTION_KEY`        | —                   | Clé maître hex 64 caractères (AES-256-GCM). **Requis.** |
-| `WALLET_KEY_SALT`              | `rollbit-wallet-v1` | Sel HKDF pour la dérivation par propriétaire.           |
-| `WALLET_STORE_PATH`            | `./data`            | Dossier du magasin chiffré (`wallets.json`).            |
-| `WALLET_PERSIST`               | `true`              | `false` = mémoire uniquement (serverless/éphémère).     |
-| `WALLET_REQUIRE_PASSPHRASE`    | `false`             | Exiger une phrase secrète pour créer/révéler.           |
-| `WALLET_MIN_PASSPHRASE_LENGTH` | `8`                 | Longueur minimale de la phrase secrète.                 |
-| `WALLET_MAX_PER_OWNER`         | `20`                | Nombre max de wallets par propriétaire.                 |
-| `ETHEREUM_TREASURY_ADDRESS`    | —                   | Clé **publique** de réception des dépôts ETH.           |
-| `BITCOIN_TREASURY_ADDRESS`     | —                   | Clé **publique** de réception des dépôts BTC.           |
-| `SOLANA_TREASURY_ADDRESS`      | —                   | Clé **publique** de réception des dépôts SOL.           |
-| `HOUSE_EDGE_BPS`               | `200`               | Marge maison en points de base (max 2000).              |
-| `SERVICE_FEE_BPS`              | `100`               | Frais de service sur les dépôts, en points de base.     |
+> ⚠️ Ne mettez **jamais** de clé privée côté serveur : toutes les transactions
+> sont signées par le wallet du joueur.
 
-### Dépôts & rentabilité
+> ℹ️ D'autres variables (Monetag, Telegram, redirection de bots) sont documentées
+> dans `.env.example`.
 
-- Les trois adresses **publiques** (`ETH`, `BTC`, `SOL`) sont exposées via
-  `GET /api/deposits/treasury` et affichées aux visiteurs dans la fenêtre
-  « Dépôt » (copie + lien explorateur). N’y mettez **jamais** de clé privée.
-- La marge de la maison est configurable (`GET /api/house`, `HOUSE_EDGE_BPS`).
-  Le multiplicateur vaut `payoutFactor / chance`, donc l’espérance de gain du
-  casino reste positive (marge appliquée) tout en restant faible pour le
-  visiteur (2 % par défaut).
-
-> ⚠️ Sauvegardez `MASTER_ENCRYPTION_KEY` et les phrases de récupération : sans
-> elles, les secrets chiffrés sont irrécupérables.

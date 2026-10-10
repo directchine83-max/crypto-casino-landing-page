@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Rollbit — Jouez juste. Gagnez vrai.',
+  title: 'Live Roll — Jouez juste. Gagnez vrai.',
   description: 'Le casino crypto transparent, rapide et provably fair.',
   generator: 'v0.app',
   icons: {
